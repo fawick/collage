@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"image/jpeg"
 	_ "image/png"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,13 +20,14 @@ type Options struct {
 	maxAngle    int
 	quality     int
 	size        string
+	scale       float64
 	output      string
 	recursively bool
 	number      int
-	border      int
+	border      float64
 	width       int
 	height      int
-	dropshadow  int
+	dropshadow  float64
 }
 
 var options Options
@@ -56,12 +56,12 @@ var cmdRoot = &cobra.Command{
 			return errors.Wrap(err, "invalid height value")
 		}
 		options.width, options.height = w, h
+		// if len(args) == 0 {
+		// 	return fmt.Errorf("no FILE/DIR argument provided")
+		// }
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return fmt.Errorf("no FILE/DIR argument provided")
-		}
 		return run(options, args)
 	},
 }
@@ -72,29 +72,34 @@ func init() {
 	f.IntVarP(&options.maxAngle, "max-angle", "a", 60, "maximum rotation angle")
 	f.IntVarP(&options.quality, "quality", "q", 90, "JPEG quality parameter for resulting image")
 	f.IntVarP(&options.number, "number", "n", 150, "maximum number of photos to use (0 means 'use all')")
-	f.IntVarP(&options.border, "border", "b", 25, "border width in pixel")
-	f.IntVarP(&options.dropshadow, "dropshadow", "d", 25, "drop shadow width in pixel")
+	f.Float64VarP(&options.border, "border", "b", 3.3, "border width in pixel")
+	f.Float64VarP(&options.dropshadow, "dropshadow", "d", 3, "drop shadow width in percent")
+	f.Float64VarP(&options.scale, "scale", "z", 9.5, "scale factor in percent")
 	f.StringVarP(&options.output, "output", "o", "collage.jpg", "resulting image file name")
 	f.BoolVarP(&options.recursively, "recursively", "r", false, "scan directories recursively")
 }
 
 func run(opts Options, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("no FILE/DIR argument provided")
-	}
-	all, err := findAllImages(args, opts.recursively)
-	if err != nil {
-		return errors.Wrap(err, "cannot identify conversion sources")
-	}
+	// if len(args) == 0 {
+	// 	return fmt.Errorf("no FILE/DIR argument provided")
+	// }
+	// all, err := findAllImages(args, opts.recursively)
+	// if err != nil {
+	// 	return errors.Wrap(err, "cannot identify conversion sources")
+	// }
 	// shuffle the arguments
-	for i := range args {
-		r := rand.Intn(i + 1)
-		args[r], args[i] = args[i], args[r]
-	}
-	if opts.number == 0 {
-		opts.number = len(all)
-	} else if opts.number > len(all) {
-		opts.number = len(all) - 1
+	// for i := range args {
+	// 	r := rand.Intn(i + 1)
+	// 	args[r], args[i] = args[i], args[r]
+	// }
+	// if opts.number == 0 {
+	// 	opts.number = len(all)
+	// } else if opts.number > len(all) {
+	// 	opts.number = len(all) - 1
+	// }
+	args = []string{}
+	for i := 0; i < opts.number; i++ {
+		args = append(args, fmt.Sprintf("%d.jpg", i))
 	}
 	return convert(opts, args[:opts.number])
 }

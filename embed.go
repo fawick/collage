@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/disintegration/gift"
-	"github.com/pkg/errors"
 )
 
 type rectMask struct {
@@ -18,45 +17,57 @@ type rectMask struct {
 }
 
 func embedImage(target draw.Image, filename string, opts Options) error {
-	f, err := os.Open(filename)
-	if err != nil {
-		return errors.Wrap(err, "cannot open image file for embedding")
-	}
-	defer f.Close()
-	m, _, err := image.Decode(f)
-	if err != nil {
-		return errors.Wrap(err, "cannot decode image for embedding")
-	}
+	// f, err := os.Open(filename)
+	// if err != nil {
+	// 	return errors.Wrap(err, "cannot open image file for embedding")
+	// }
+	// defer f.Close()
+	// m, _, err := image.Decode(f)
+	// if err != nil {
+	// 	return errors.Wrap(err, "cannot decode image for embedding")
+	// }
 
 	// max is the resulting long side
 	max := opts.width
 	if opts.height > max {
 		max = opts.height
 	}
-	max = int(float64(max) / 10.5)
+	max = int(float64(max) * opts.scale / 100)
 
-	// resize
-	filter := gift.New(gift.ResizeToFit(max, max, gift.LanczosResampling))
-	resized := image.NewRGBA(filter.Bounds(m.Bounds()))
-	filter.Draw(resized, m)
+	// // resize
+	// filter := gift.New(gift.ResizeToFit(max, max, gift.LanczosResampling))
+	// resized := image.NewRGBA(filter.Bounds(m.Bounds()))
+	// filter.Draw(resized, m)
+	w := int(float64(opts.width) * opts.scale / 100)
+	h := int(float64(opts.height) * opts.scale / 100)
+
+	resized := image.NewRGBA(image.Rect(0, 0, w, h))
+	r := uint8(100 + rand.Intn(56))
+	g := uint8(100 + rand.Intn(56))
+	b := uint8(100 + rand.Intn(56))
+	draw.Draw(resized, resized.Bounds(), image.NewUniform(color.RGBA{r, g, b, 255}), image.Point{}, draw.Src)
 
 	// draw frame
 	var (
 		colorFrame = image.NewUniform(color.NRGBA{R: 242, G: 242, B: 242, A: 255})
-		colorBlack = image.NewUniform(color.RGBA{0, 0, 0, 64})
+		colorBlack = image.NewUniform(color.RGBA{0, 0, 0, 255})
 	)
-	p := image.Point{opts.border, opts.border}
-	framed := image.NewNRGBA(resized.Bounds().Inset(-opts.border).Add(p))
+	border := int(opts.border / 100.0 * float64(max))
+	p := image.Point{border, border}
+	framed := image.NewNRGBA(resized.Bounds().Inset(-border).Add(p))
 	draw.Draw(framed, framed.Bounds(), colorFrame, image.Point{}, draw.Src)
 	draw.Draw(framed, resized.Bounds().Add(p), resized, image.Point{}, draw.Src)
 
 	// draw shadow mask
-	p = image.Point{opts.dropshadow, opts.dropshadow}
-	shadow := image.NewRGBA(framed.Bounds().Inset(-opts.dropshadow).Add(p))
-	draw.Draw(shadow, shadow.Bounds().Inset(opts.dropshadow/2), colorBlack, image.Point{}, draw.Src)
+	dropshadow := int(opts.dropshadow / 100.0 * float64(max))
+	shadowShift := int(opts.dropshadow / 100.0 * float64(max) * 0.66)
+	p = image.Point{dropshadow, shadowShift}
+	shadow := image.NewRGBA(framed.Bounds().Inset(-dropshadow).Add(p))
+	p = image.Point{shadowShift, shadowShift}
+	draw.Draw(shadow, framed.Bounds().Add(p), colorBlack, image.Point{}, draw.Src)
 
 	// blur shadow mask
-	filter = gift.New(gift.GaussianBlur(float32(opts.dropshadow) / 3.0))
+	filter := gift.New(gift.GaussianBlur(float32(dropshadow) / 3))
 	dst := image.NewRGBA(filter.Bounds(shadow.Bounds()))
 	filter.Draw(dst, shadow)
 	draw.Draw(dst, framed.Bounds().Add(p), framed, image.Point{}, draw.Src)
