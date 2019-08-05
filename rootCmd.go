@@ -87,16 +87,16 @@ func run(opts Options, args []string) error {
 		return errors.Wrap(err, "cannot identify conversion sources")
 	}
 	// shuffle the arguments
-	for i := range args {
+	for i := range all {
 		r := rand.Intn(i + 1)
-		args[r], args[i] = args[i], args[r]
+		all[r], all[i] = all[i], all[r]
 	}
 	if opts.number == 0 {
 		opts.number = len(all)
 	} else if opts.number > len(all) {
 		opts.number = len(all) - 1
 	}
-	return convert(opts, args[:opts.number])
+	return convert(opts, all[:opts.number])
 }
 
 func convert(opts Options, args []string) error {
