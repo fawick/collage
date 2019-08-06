@@ -20,17 +20,15 @@ import (
 type Options struct {
 	maxAngle    int
 	quality     int
-	size        string
 	output      string
 	recursively bool
 	number      int
-	border      int
 	width       int
 	height      int
+	embedSize   int
+	border      int
 	dropshadow  int
 }
-
-var options Options
 
 var cmdRoot = &cobra.Command{
 	Use:   "collage [flags] FILE/DIR [FILE/DIR] ...",
@@ -39,11 +37,20 @@ var cmdRoot = &cobra.Command{
 			stack. It takes a list of names of image files and/or directories 
 			with image files which are then compositied into a collage image 
 			and saved to disk.`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if options.size == "" {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := cmd.PersistentFlags()
+		options := Options{}
+		options.maxAngle, _ = f.GetInt("max-angle")
+		options.quality, _ = f.GetInt("quality")
+		options.output, _ = f.GetString("output")
+		options.recursively, _ = f.GetBool("recursively")
+		options.number, _ = f.GetInt("number")
+
+		size, _ := f.GetString("size")
+		if size == "" {
 			return errors.New("size parameter may not be empty")
 		}
-		wh := strings.Split(options.size, "x")
+		wh := strings.Split(size, "x")
 		if len(wh) != 2 {
 			return errors.New("invalid value for size, use e.g. 800x400")
 		}
@@ -56,9 +63,31 @@ var cmdRoot = &cobra.Command{
 			return errors.Wrap(err, "invalid height value")
 		}
 		options.width, options.height = w, h
-		return nil
-	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+
+		// max is the resulting long side
+		max := options.width
+		if options.height > max {
+			max = options.height
+		}
+		embedSizePercent, _ := f.GetFloat64("embedsize")
+		if embedSizePercent < 0 || embedSizePercent > 100 {
+			return fmt.Errorf("invalid embedsize percentage value: %f", embedSizePercent)
+		}
+		options.embedSize = int(float64(max)*embedSizePercent/100.0 + 0.5)
+
+		borderPercent, _ := f.GetFloat64("border")
+		if borderPercent < 0 || borderPercent > 100 {
+			return fmt.Errorf("invalid border percentage value: %f", borderPercent)
+		}
+		options.border = int(float64(max)*embedSizePercent*borderPercent/10000.0 + 0.5)
+
+		dropPercent, _ := f.GetFloat64("dropshadow")
+		if dropPercent < 0 || dropPercent > 100 {
+			return fmt.Errorf("invalid dropshadow percentage value: %f", dropPercent)
+		}
+		options.dropshadow = int(float64(max)*embedSizePercent*dropPercent/10000.0 + 0.5)
+
+		fmt.Printf("%+v", options)
 		if len(args) == 0 {
 			return fmt.Errorf("no FILE/DIR argument provided")
 		}
@@ -68,14 +97,15 @@ var cmdRoot = &cobra.Command{
 
 func init() {
 	f := cmdRoot.PersistentFlags()
-	f.StringVarP(&options.size, "size", "s", "1920x1080", "target canvas size in WIDTHxHEIGHT")
-	f.IntVarP(&options.maxAngle, "max-angle", "a", 60, "maximum rotation angle")
-	f.IntVarP(&options.quality, "quality", "q", 90, "JPEG quality parameter for resulting image")
-	f.IntVarP(&options.number, "number", "n", 150, "maximum number of photos to use (0 means 'use all')")
-	f.IntVarP(&options.border, "border", "b", 25, "border width in pixel")
-	f.IntVarP(&options.dropshadow, "dropshadow", "d", 25, "drop shadow width in pixel")
-	f.StringVarP(&options.output, "output", "o", "collage.jpg", "resulting image file name")
-	f.BoolVarP(&options.recursively, "recursively", "r", false, "scan directories recursively")
+	f.StringP("size", "s", "1920x1080", "target canvas size in WIDTHxHEIGHT")
+	f.IntP("max-angle", "a", 60, "maximum rotation angle")
+	f.IntP("quality", "q", 90, "JPEG quality parameter for resulting image")
+	f.StringP("output", "o", "collage.jpg", "resulting image file name")
+	f.BoolP("recursively", "r", false, "scan directories recursively")
+	f.IntP("number", "n", 150, "maximum number of photos to use (0 means 'use all')")
+	f.Float64P("embedsize", "e", 10.0, "size of embedded image in percent of target canvas size")
+	f.Float64P("border", "b", 3.0, "size of border in percent of embedded image size")
+	f.Float64P("dropshadow", "d", 3.0, "size of dropshadow in percent of embedded image size")
 }
 
 func run(opts Options, args []string) error {

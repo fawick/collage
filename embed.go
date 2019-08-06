@@ -28,15 +28,8 @@ func embedImage(target draw.Image, filename string, opts Options) error {
 		return errors.Wrap(err, "cannot decode image for embedding")
 	}
 
-	// max is the resulting long side
-	max := opts.width
-	if opts.height > max {
-		max = opts.height
-	}
-	max = int(float64(max) / 10.5)
-
 	// resize
-	filter := gift.New(gift.ResizeToFit(max, max, gift.LanczosResampling))
+	filter := gift.New(gift.ResizeToFit(opts.embedSize, opts.embedSize, gift.LanczosResampling))
 	resized := image.NewRGBA(filter.Bounds(m.Bounds()))
 	filter.Draw(resized, m)
 
