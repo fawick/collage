@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -10,7 +11,6 @@ import (
 	"os"
 
 	"github.com/disintegration/gift"
-	"github.com/pkg/errors"
 )
 
 type rectMask struct {
@@ -20,12 +20,12 @@ type rectMask struct {
 func embedImage(target draw.Image, filename string, opts Options) error {
 	f, err := os.Open(filename)
 	if err != nil {
-		return errors.Wrap(err, "cannot open image file for embedding")
+		return fmt.Errorf("cannot open image file for embedding: %v", err)
 	}
 	defer f.Close()
 	m, _, err := image.Decode(f)
 	if err != nil {
-		return errors.Wrap(err, "cannot decode image for embedding")
+		return fmt.Errorf("cannot decode image for embedding", err)
 	}
 
 	// resize

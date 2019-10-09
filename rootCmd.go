@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -12,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -34,9 +34,9 @@ var cmdRoot = &cobra.Command{
 	Use:   "collage [flags] FILE/DIR [FILE/DIR] ...",
 	Short: "Collage is a generator for a randomized photo stack collage",
 	Long: `A generator for photo collages that appear do be dropped on a 
-			stack. It takes a list of names of image files and/or directories 
-			with image files which are then compositied into a collage image 
-			and saved to disk.`,
+stack. It takes a list of names of image files and/or directories
+with image files which are then compositied into a collage image
+and saved to disk.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := cmd.PersistentFlags()
 		options := Options{}
@@ -56,11 +56,11 @@ var cmdRoot = &cobra.Command{
 		}
 		w, err := strconv.Atoi(wh[0])
 		if err != nil {
-			return errors.Wrap(err, "invalid width value")
+			return fmt.Errorf("invalid width value: %v", err)
 		}
 		h, err := strconv.Atoi(wh[1])
 		if err != nil {
-			return errors.Wrap(err, "invalid height value")
+			return fmt.Errorf("invalid height value: %v", err)
 		}
 		options.width, options.height = w, h
 
@@ -114,7 +114,7 @@ func run(opts Options, args []string) error {
 	}
 	all, err := findAllImages(args, opts.recursively)
 	if err != nil {
-		return errors.Wrap(err, "cannot identify conversion sources")
+		return fmt.Errorf("cannot identify conversion sources: %v", err)
 	}
 	// shuffle the arguments
 	for i := range all {
@@ -140,12 +140,12 @@ func convert(opts Options, args []string) error {
 		fmt.Printf("%d/%d: %s\n", i+1, opts.number, a)
 		err := embedImage(targetImage, a, opts)
 		if err != nil {
-			return errors.Wrap(err, "cannot embed image")
+			return fmt.Errorf("cannot embed image: %v", err)
 		}
 	}
 	w, err := os.Create(opts.output)
 	if err != nil {
-		return errors.Wrap(err, "cannot create output file")
+		return fmt.Errorf("cannot create output file: %v", err)
 	}
 	defer w.Close()
 	return jpeg.Encode(w, targetImage, &jpeg.Options{Quality: opts.quality})
@@ -156,7 +156,7 @@ func findAllImages(args []string, recursively bool) ([]string, error) {
 	for _, a := range args {
 		fi, err := os.Lstat(a)
 		if err != nil {
-			return result, errors.Wrapf(err, "cannot get info for conversion source")
+			return result, fmt.Errorf("cannot get info for conversion source: %v", err)
 		}
 		if !fi.IsDir() {
 			result = append(result, a)
@@ -164,7 +164,7 @@ func findAllImages(args []string, recursively bool) ([]string, error) {
 		}
 		inDir, err := findImagesInDir(a, recursively)
 		if err != nil {
-			return result, errors.Wrapf(err, "cannot scan dir %s", a)
+			return result, fmt.Errorf("cannot scan dir %s: %v", a, err)
 		}
 		result = append(result, inDir...)
 	}
