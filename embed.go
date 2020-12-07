@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/disintegration/gift"
+	"github.com/disintegration/imageorient"
 )
 
 type rectMask struct {
@@ -23,7 +24,7 @@ func embedImage(target draw.Image, filename string, opts Options) error {
 		return fmt.Errorf("cannot open image file for embedding: %w", err)
 	}
 	defer f.Close()
-	m, _, err := image.Decode(f)
+	m, _, err := imageorient.Decode(f)
 	if err != nil {
 		return fmt.Errorf("cannot decode image for embedding: %w", err)
 	}
