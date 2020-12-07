@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	_ "image/png"
 	"math/rand"
 	"os"
@@ -18,16 +19,17 @@ import (
 
 // Options describe the conversion parameters
 type Options struct {
-	maxAngle    int
-	quality     int
-	output      string
-	recursively bool
-	number      int
-	width       int
-	height      int
-	embedSize   int
-	border      int
-	dropshadow  int
+	noBackground bool
+	maxAngle     int
+	quality      int
+	output       string
+	recursively  bool
+	number       int
+	width        int
+	height       int
+	embedSize    int
+	border       int
+	dropshadow   int
 }
 
 var cmdRoot = &cobra.Command{
@@ -40,6 +42,7 @@ and saved to disk.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := cmd.PersistentFlags()
 		options := Options{}
+		options.noBackground, _ = f.GetBool("nobackground")
 		options.maxAngle, _ = f.GetInt("max-angle")
 		options.quality, _ = f.GetInt("quality")
 		options.output, _ = f.GetString("output")
@@ -101,6 +104,7 @@ func init() {
 	f.IntP("max-angle", "a", 60, "maximum rotation angle")
 	f.IntP("quality", "q", 90, "JPEG quality parameter for resulting image")
 	f.StringP("output", "o", "collage.jpg", "resulting image file name")
+	f.BoolP("nobackground", "t", false, "remove background, make transparent (output will be PNG)")
 	f.BoolP("recursively", "r", false, "scan directories recursively")
 	f.IntP("number", "n", 150, "maximum number of photos to use (0 means 'use all')")
 	f.Float64P("embedsize", "e", 10.0, "size of embedded image in percent of target canvas size")
@@ -133,7 +137,11 @@ func convert(opts Options, args []string) error {
 	targetImage := image.NewNRGBA(image.Rect(0, 0, opts.width, opts.height))
 	for x := 0; x < opts.width; x++ {
 		for y := 0; y < opts.height; y++ {
-			targetImage.SetNRGBA(x, y, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+			if opts.noBackground {
+				targetImage.SetNRGBA(x, y, color.NRGBA{R: 255, G: 255, B: 255, A: 0})
+			} else {
+				targetImage.SetNRGBA(x, y, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+			}
 		}
 	}
 	for i, a := range args {
@@ -148,6 +156,9 @@ func convert(opts Options, args []string) error {
 		return fmt.Errorf("cannot create output file: %v", err)
 	}
 	defer w.Close()
+	if opts.noBackground {
+		return png.Encode(w, targetImage)
+	}
 	return jpeg.Encode(w, targetImage, &jpeg.Options{Quality: opts.quality})
 }
 

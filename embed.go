@@ -20,12 +20,12 @@ type rectMask struct {
 func embedImage(target draw.Image, filename string, opts Options) error {
 	f, err := os.Open(filename)
 	if err != nil {
-		return fmt.Errorf("cannot open image file for embedding: %v", err)
+		return fmt.Errorf("cannot open image file for embedding: %w", err)
 	}
 	defer f.Close()
 	m, _, err := image.Decode(f)
 	if err != nil {
-		return fmt.Errorf("cannot decode image for embedding", err)
+		return fmt.Errorf("cannot decode image for embedding: %w", err)
 	}
 
 	// resize
